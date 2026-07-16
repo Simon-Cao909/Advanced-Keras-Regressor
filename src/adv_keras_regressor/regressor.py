@@ -29,8 +29,6 @@ class AdvKerasRegressor(RegressorMixin,BaseEstimator):
     '''
     AdvKerasRegressor is a machine learning algorithm that combines the user-friendly 
     features of MLPRegressor and the versatility of Tensorflow with Keras
-
-    It is an upgraded version of KerasRegressor, now supporting more types of networks
     '''
     
     def __init__(
