@@ -4,11 +4,28 @@ SKGraphEstimator is a graph-based neural network framework built on top of Keras
 ## Features
 --
 Graph-based architecture DSL
+
 ResNet, Inception, and Xception
+
 Transfer learning
+
 Embed pre-trained scikit-learn regressors into neural networks
+
 Standard and variational autoencoders
+
 scikit-learn BaseEstimator compatibility
+
+## Getting started
+
+```bash
+git clone git@github.com:Simon-Cao909/sk-graph-estimator.git
+cd sk-graph-estimator
+pip install -e .
+```
+
+```python
+from sk_graph_estimator.estimator import SKGraphEstimator
+```
 
 ## Example code
 ```python

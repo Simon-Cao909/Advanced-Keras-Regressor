@@ -415,6 +415,7 @@ For advanced layers and blocks
     - Here, xcep_specs should be of the form [[filters,kernel_size,activation,padding],...], where the ith element in the list corresponds to the hyperparameters of the ith separable convolution layer
 - For 'regressor': [layer_type,model]
 - For 'NN': [layer_type,model,freeze]
+- For 'multi-output': exact same as 'I' [layer_type,branches]
 
 Note that you can still use all aliases for layer_type
 
