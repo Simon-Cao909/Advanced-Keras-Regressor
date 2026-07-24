@@ -28,6 +28,10 @@ The required and optional attributes during initialization
 - learning_rate (float, default=1e-4): The learning rate for training
 - random_state (int or None, default=None): The random state. Used for reproducible results
 - shuffle (bool, default=True): Whether to shuffle the data before training
+- scoring_weights (list or tuple or None, default=None): For multi-headed output only
+                                                         Determines how the average score is weighted
+                                                         The ith element of this denotes the weighting of
+                                                         the score corresponding to the ith output
 
 ## Public Methods
 
@@ -40,8 +44,8 @@ The required and optional attributes during initialization
 - This trains the model on the given features and labels
 - For vector valued outputs, this is identical to an sklearn model's .fit()
 - Parameters:
-  - X (array-like) - The features of shape (n_samples, ...)
-  - y (array-like) - The labels of shape (n_samples, ...) or (n_samples,)
+  - X (array-like) - The features of shape (n_samples, *input_shape_)
+  - y (array-like) - The labels of shape (n_samples, *output_shape_) or (n_samples,)
   - **fit_params - Any additional parameters used in Keras when calling keras.Model.fit(...)
 - :return (self): The trained estimator
 
@@ -49,8 +53,19 @@ The required and optional attributes during initialization
 - This predicts the labels given the features
 - For vector valued outputs, this is identical to an sklearn model's .predict()
 - Parameters:
-  - X (array-like) - The features of shape (n_samples, ...)
-- :return (numpy.ndarray): The labels of shape (n_samples, ...) or (n_samples,) (for one output case)
+  - X (array-like) - The features of shape (n_samples, *input_shape_)
+- :return (numpy.ndarray): The labels of shape (n_samples, *output_shape_) or (n_samples,) (for one output case)
+
+.score()
+- Scores the model based on how it performs on given data
+  - For SKGraphEstimator, this returns the neg mse loss
+  - For SKGraphRegressor, this returns the r2 score
+  - For SKGraphClassifier, this returns the accuracy score
+- Parameters:
+  - X (array-like) - The features of shape (n_samples, *input_shape_)
+  - y (array-like or list) - The labels of shape (n_samples, *output_shape_) or (n_samples,) for single output or a list of labels for multi-output
+- :return (float or None): The score or weighted mean of scores (for multi-output)
+'''
 
 # SKGraphRegressor
 
@@ -62,13 +77,6 @@ Same as SKGraphEstimator
 
 Same as SKGraphEstimator
 
-.score()
-- Returns the R^2 score of the model
-- Parameters
-  - X (array-like) - The features of shape (n_samples, ...)
-  - y (array-like) - The labels of shape (n_samples, ...) or (n_samples,)
-- :return (float or ndarray of floats or None): The score or ndarray of scores
-
 # SKGraphClassifier
 
 ## Attributes
@@ -78,13 +86,6 @@ Same as SKGraphEstimator
 ## Public Methods
 
 Same as SKGraphEstimator
-
-.score()
-- Returns the accuracy score of the model
-- Parameters
-  - X (array-like) - The features of shape (n_samples, ...)
-  - y (array-like) - The labels of shape (n_samples, ...) or (n_samples,)
-- :return (float or ndarray of floats or None): The score or ndarray of scores
 
 # SKGraphAutoencoder
 
@@ -157,6 +158,6 @@ The required and optional attributes during initialization
 .score()
 - Returns the negative MSE score
 - Parameters
-  - X (array-like) - The features of shape (n_samples, ...)
+  - X (array-like) - The features of shape (n_samples, *input_shape_)
   - y (None) - Leave this as None
 - :return (float): The score

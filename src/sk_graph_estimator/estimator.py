@@ -8,12 +8,16 @@ import numpy as np
 from .tools.sklearn_layer import SKlearnLayer
 from .tools.check_shapes import shapes_equal
 from .tools.quick_build_parser import parse_quick
+from .tools.score import compute_score, neg_mse_score
 
 class SKGraphEstimator(BaseEstimator):
     '''
     SKGraphEstimator is a machine learning algorithm that combines the user-friendly 
     features of scikit-learn regressors and the versatility of Tensorflow with Keras
     '''
+
+    scoring_func = neg_mse_score
+    must_be_vector = False
     
     def __init__(
         self,
@@ -32,6 +36,7 @@ class SKGraphEstimator(BaseEstimator):
         learning_rate=1e-3,
         random_state=None,
         shuffle=True,
+        scoring_weights=None,
     ):
         '''
         Attributes
@@ -61,6 +66,10 @@ class SKGraphEstimator(BaseEstimator):
         - learning_rate (float, default=1e-4): The learning rate for training
         - random_state (int or None, default=None): The random state. Used for reproducible results
         - shuffle (bool, default=True): Whether to shuffle the data before training
+        - scoring_weights (list or tuple or None, default=None): For multi-headed output only
+                                                                 Determines how the average score is weighted
+                                                                 The ith element of this denotes the weighting of
+                                                                 the score corresponding to the ith output
         '''
         self.model_structure = model_structure
         self.build_setting = build_setting
@@ -77,6 +86,7 @@ class SKGraphEstimator(BaseEstimator):
         self.learning_rate = learning_rate
         self.random_state = random_state
         self.shuffle = shuffle
+        self.scoring_weights = scoring_weights
 
 
     ### HELPER FUNCTIONS ###
@@ -203,7 +213,7 @@ class SKGraphEstimator(BaseEstimator):
                         f"For output {i}: expected shape {expec_shape}, "
                         f"got {target.shape[1:]} instead"
                     )
-        elif len(self.output_shape_) <= 2 and len(self.input_shape_) <= 2:
+        elif len(self.output_shape_) <= 1 and len(self.input_shape_) <= 1:
             if y is None:
                 X = check_array(X, accept_sparse=False, dtype=np.float32)
                 X = validate_data(self,X,reset=False)
@@ -420,6 +430,26 @@ class SKGraphEstimator(BaseEstimator):
         return model(x)
 
     def _add_multioutput_block(self,layer_specs,ind,x):
+        '''
+        Adds a multi-output block to the model
+        Must be the output layer
+
+        :param layer_specs (dict): A dictionary containing only one element with key 'branches'
+                                   The associated value should be a non-empty list or tuple of
+                                   the form:
+                                   [[{'type':...},...],
+                                   [{'type':...},...],
+                                   ...
+                                   ],
+                                   indicating the different branches
+        :param ind (int or str): The index of the multi-output block
+        :param x (KerasTensor): The tensor being passed through the model
+
+        :return (list or KerasTensor): If more than one branch was given, a list of outputs
+                                       where the ith element corresponds to the ith branch
+                                       If only one branch was given, the output will
+                                       just be the output of that branch
+        '''
         branches = layer_specs.get('branches')
 
         if branches is None:
@@ -634,8 +664,9 @@ class SKGraphEstimator(BaseEstimator):
         '''
         Trains the model on the given features and labels
 
-        :param X (array-like): The features of shape (n_samples, ...)
-        :param y (array-like): The labels of shape (n_samples, ...) or (n_samples,)
+        :param X (array-like): The features of shape (n_samples, *input_shape_)
+        :param y (array-like or list): The labels of shape (n_samples, *output_shape_) or (n_samples,) for single output
+                                       or list of labels for multi-output
         :param fit_params: Any additional fit parameters used in Keras
 
         :return (self): The trained estimator
@@ -707,9 +738,10 @@ class SKGraphEstimator(BaseEstimator):
         '''
         Predicts the labels given the features
 
-        :param X (array-like): The features of shape (n_samples, ...)
+        :param X (array-like): The features of shape (n_samples, *input_shape_)
 
-        :return (numpy.ndarray): The labels of shape (n_samples, ...) or (n_samples,)
+        :return (numpy.ndarray or list): The labels of shape (n_samples, *output_shape_) or (n_samples,) for single output
+                                         For multi-output, it is a list of ndarrays with shape (n_samples,*output_shape_) or (n_samples,)
         '''
         self._check_is_fitted()
         X = self._validate_data(X)
@@ -725,5 +757,22 @@ class SKGraphEstimator(BaseEstimator):
                 for p, was_1d in zip(pred, self.y_was_1d_)
             ]
 
-
         return pred
+
+    def score(self,X,y):
+        '''
+        Scores the model based on how it performs on given data
+        - For SKGraphEstimator, this returns the neg mse score
+        - For SKGraphRegressor, this returns the r2 score
+        - For SKGraphClassifier, this returns the accuracy score
+
+        :param X (array-like): The features of shape (n_samples, *input_shape_)
+        :param y (array-like or list): The labels of shape (n_samples, *output_shape_) or (n_samples,) for single output
+                                       or a list of labels for multi-output
+
+        :return (float or None): The score or weighted mean of scores (for multi-output)
+        '''
+        return compute_score(y,self.predict(X),
+                             scoring_func=self.scoring_func,
+                             weights=self.scoring_weights,
+                             must_be_vector=self.must_be_vector)

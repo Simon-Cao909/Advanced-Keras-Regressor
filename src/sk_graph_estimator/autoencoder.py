@@ -6,12 +6,17 @@ from .estimator import SKGraphEstimator
 from .tools.quick_build_parser import parse_quick
 from .tools.sae import SAE
 from .tools.vae import VAE, sampling
+from .tools.score import compute_score, neg_mse_score
 
 class SKGraphAutoencoder(SKGraphEstimator):
     '''
     SKGraphAutoencoder is a subclass of SKGraphEstimator that is meant to
     create standard and variational autoencoders
     '''
+
+    scoring_func = neg_mse_score
+    must_be_vector = False
+
     def __init__(
         self,
         encoder_structure,
@@ -219,7 +224,7 @@ class SKGraphAutoencoder(SKGraphEstimator):
         '''
         Trains the model on the given features
 
-        :param X (array-like): The features of shape (n_samples, ...)
+        :param X (array-like): The features of shape (n_samples, *input_shape_)
         :param y (None): Leave this as None
         :param fit_params: Any additional fit parameters used in Keras
 
@@ -262,17 +267,19 @@ class SKGraphAutoencoder(SKGraphEstimator):
 
         return self
         
-    def score(self, X, y=None):
+    def score(self,X,y=None):
         '''
         Scores the model based on how it performs on given data
+        Returns the negative MSE score
 
-        :param X (array-like): The features of shape (n_samples, ...)
-        :param y (None): Leave this as None
+        :param X (array-like): The features of shape (n_samples, *input_shape_)
+        :param y (array-like or list): Leave this as None
 
-        :return (float): Negative MSE between X and the prediction
+        :return (float or None): The negative MSE score
         '''
-        pred = self.predict(X)
-        return -np.mean((X - pred)**2)
+        return compute_score(X,self.predict(X),
+                             scoring_func=self.scoring_func,
+                             must_be_vector=self.must_be_vector)
     
     
     ### AUTOENCODER SPECIFIC METHODS ###
